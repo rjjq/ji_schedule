@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隨機分組工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            height: 200px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .group {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .round {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>隨機分組工具</h1>
+    
+    <div class="form-group">
+        <label for="repeatCount">重複次數：</label>
+        <input type="number" id="repeatCount" min="1" value="3">
+    </div>
+    
+    <div class="form-group">
+        <label for="groupCount">每組人數：</label>
+        <input type="number" id="groupCount" min="1" value="5">
+    </div>
+    
+    <div class="form-group">
+        <label for="names">姓名列表（每行一個名字）：</label>
+        <textarea id="names" placeholder="請輸入姓名，每行一個"></textarea>
+    </div>
+    
+    <button onclick="generateGroups()">生成隨機分組</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        function generateGroups() {
+            const repeatCount = parseInt(document.getElementById('repeatCount').value);
+            const groupCount = parseInt(document.getElementById('groupCount').value);
+            const namesText = document.getElementById('names').value;
+            const names = namesText.split('\n').filter(name => name.trim() !== '');
+            
+            if (names.length === 0) {
+                alert('請輸入至少一個姓名！');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<h2>分組結果</h2>';
+            
+            let nameCountState = {};
+            let lastGroup = [];
+            
+            for (let i = 0; i < repeatCount; i++) {
+                const roundDiv = document.createElement('div');
+                roundDiv.className = 'round';
+                roundDiv.innerHTML = `<h3>第${i + 1}次</h3>`;
+                
+                let tmpNames = [...names];
+                
+                // 處理上一輪不完整的組
+                if (lastGroup.length > 0 && lastGroup.length < groupCount) {
+                    const complementDiv = document.createElement('div');
+                    complementDiv.className = 'group';
+                    complementDiv.innerHTML = '<strong>補齊上一組：</strong> ';
+                    
+                    while (lastGroup.length < groupCount && tmpNames.length > 0) {
+                        // 隨機選擇一個候選人，確保不與lastGroup中的人重複
+                        let availableNames = tmpNames.filter(name => !lastGroup.includes(name));
+                        
+                        // 如果沒有可用的不重複名字，就從所有名字中選擇
+                        if (availableNames.length === 0) {
+                            availableNames = tmpNames;
+                        }
+                        
+                        const randomIndex = Math.floor(Math.random() * availableNames.length);
+                        const candidate = availableNames[randomIndex];
+                        
+                        complementDiv.innerHTML += `${candidate} `;
+                        
+                        lastGroup.push(candidate);
+                        // 從tmpNames中移除選中的候選人
+                        const indexInTmpNames = tmpNames.indexOf(candidate);
+                        if (indexInTmpNames !== -1) {
+                            tmpNames.splice(indexInTmpNames, 1);
+                        }
+                        
+                        // 更新計數狀態
+                        nameCountState[candidate] = (nameCountState[candidate] || 0) + 1;
+                    }
+                    
+                    roundDiv.appendChild(complementDiv);
+                }
+                
+                // 隨機打亂名單
+                for (let j = tmpNames.length - 1; j > 0; j--) {
+                    const k = Math.floor(Math.random() * (j + 1));
+                    [tmpNames[j], tmpNames[k]] = [tmpNames[k], tmpNames[j]];
+                }
+                
+                // 分組
+                for (let j = 0; j < tmpNames.length; j += groupCount) {
+                    const group = tmpNames.slice(j, j + groupCount);
+                    if (group.length > 0) {
+                        const groupDiv = document.createElement('div');
+                        groupDiv.className = 'group';
+                        groupDiv.innerHTML = `<strong>第${Math.floor(j / groupCount) + 1}組：</strong> ${group.join(', ')}`;
+                        roundDiv.appendChild(groupDiv);
+                        
+                        // 更新計數狀態
+                        group.forEach(name => {
+                            nameCountState[name] = (nameCountState[name] || 0) + 1;
+                        });
+                        
+                        lastGroup = group;
+                    }
+                }
+                
+                resultDiv.appendChild(roundDiv);
+            }
+            
+            // 顯示每個人被分配的次數
+            const statsDiv = document.createElement('div');
+            statsDiv.innerHTML = '<h3>分配統計</h3><ul>';
+            
+            // 按照原始輸入的姓名順序顯示統計結果
+            names.forEach(name => {
+                const count = nameCountState[name] || 0;
+                statsDiv.innerHTML += `<li>${name}: ${count}次</li>`;
+            });
+            
+            statsDiv.innerHTML += '</ul>';
+            resultDiv.appendChild(statsDiv);
+        }
+    </script>
+</body>
+</html> 
